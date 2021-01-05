@@ -2,13 +2,9 @@
 #  Common functions used by nodes
 
 
-try:
-    import polyinterface
-except ImportError:
-    import pgc_interface as polyinterface
+import udi_interface
 
-
-LOGGER = polyinterface.LOGGER
+LOGGER = udi_interface.LOGGER
 
 """
     Some common functions to be used by node servers
@@ -37,38 +33,7 @@ def update_driver(self, driver, value, force=False, prec=3):
     except:
         LOGGER.warning('Missing data for driver ' + driver)
 
-def get_saved_log_level(self):
-    if 'customData' in self.polyConfig:
-        if 'level' in self.polyConfig['customData']:
-            return self.polyConfig['customData']['level']
-
-    return 0
-
-def save_log_level(self, level):
-    level_data = {
-            'level': level,
-            }
-    self.poly.saveCustomData(level_data)
-
-def set_logging_level(self, level=None):
-    if level is None:
-        try:
-            level = self.get_saved_log_level()
-        except:
-            LOGGER.error('set_logging_level: get saved log level failed.')
-
-        if level is None:
-            level = 30
-        level = int(level)
-    else:
-        level = int(level['value'])
-
-    self.save_log_level(level)
-
-    LOGGER.info('set_logging_level: Setting log level to %d' % level)
-    LOGGER.setLevel(level)
-
-functions = (update_driver, get_saved_log_level, save_log_level, set_logging_level)
+functions = (update_driver,)
 
 """
     Functions to handle custom parameters.
@@ -112,7 +77,10 @@ class NSParameters:
         for p in self.internal:
             if p['name'] == name:
                 p['value'] = value
-                p['isSet'] = True
+                if value != p['default']:
+                    p['isSet'] = True
+                else:
+                    p['isSet'] = False
                 return
 
     def get(self, name):
@@ -129,78 +97,48 @@ class NSParameters:
                 return p['isSet']
         return False
 
-    """
-        Send notices for unconfigured parameters that are are marked
-        as required.
-    """
-    def send_notices(self, poly):
+    def exists(self, name):
+        for p in self.internal:
+            if p['name'] == name:
+                return True
+        return False
+
+    def activeNotices(self):
+        notices = {}
         for p in self.internal:
             if not p['isSet'] and p['isRequired']:
-                if p['notice_msg'] is not None:
-                    try:
-                        poly.addNotice(p['notice_msg'], p['name'])
-                    except:
-                        poly.addNotice({p['name']: p['notice_msg']})
+                notices[p['name']] = p['notice_msg']
+        return notices
 
-    """
-        Read paramenters from Polyglot and update values appropriately.
+    def update(self, params):
+        for pkey in params.keys():
+            old_value = self.get(pkey)
+            if old_value is None:
+                # create new entry in internal, user added
+                self.internal.append({
+                    'name': pkey,
+                    'value': params[pkey],
+                    'default': '',
+                    'isSet': True,
+                    'isRequired': False,
+                    'notice_msg': ''
+                    })
+            elif old_value != params[pkey]:
+                self.set(pkey, params[pkey])
 
-        return True if all required parameters are set to non-default values
-        otherwise return False
-    """
-    def get_from_polyglot(self, poly):
-        customParams = poly.polyConfig['customParams']
-        params = {}
-
+    def isConfigured(self):
         for p in self.internal:
-            LOGGER.debug('checking for ' + p['name'] + ' in customParams')
-            if p['name'] in customParams:
-                LOGGER.debug('found ' + p['name'] + ' in customParams')
-                p['value'] = customParams[p['name']]
-                if p['value'] != p['default']:
-                    LOGGER.debug(p['name'] + ' is now set')
-                    p['isSet'] = True
-            
+            if not p['isSet'] and p['isRequired']:
+                LOGGER.debug('Returning false, not all required parameters are set.')
+                return False
+        LOGGER.debug('Returning true, all required parameters are set.')
+        return True
+
+    def save(self, params):
+        for p in self.internal:
             if p['isSet']:
                 params[p['name']] = p['value']
             else:
                 params[p['name']] = p['default']
-
-        poly.addCustomParam(params)            
-
-        for p in self.internal:
-            if not p['isSet'] and p['isRequired']:
-                return False
-        return True
-
-
-    """
-        Called from process_config to check for configuration change
-        We need to know two things; 1) did the configuration change and
-        2) are all required fields filled in.
-    """
-    def update_from_polyglot(self, config):
-        changed = False
-        valid = True
-
-        if 'customParams' in config:
-            for p in self.internal:
-                if p['name'] in config['customParams']:
-                    poly_param = config['customParams'][p['name']]
-
-                    # did it change?
-                    if poly_param != p['default'] and poly_param != p['value']:
-                        changed = True
-
-                    # is it different from the default?
-                    if poly_param != p['default']:
-                        p['value'] = poly_param
-                        p['isSet'] = True
-
-        for p in self.internal:
-            if not p['isSet'] and p['isRequired']:
-                valid = False
-
-        return (valid, changed)
 
 

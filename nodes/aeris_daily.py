@@ -1,10 +1,6 @@
 # Node definition for a daily forecast node
 
-try:
-    import polyinterface
-except ImportError:
-    import pgc_interface as polyinterface
-
+import udi_interface
 import json
 import time
 import datetime
@@ -13,10 +9,10 @@ from nodes import uom
 from nodes import weather_codes as wx
 import node_funcs
 
-LOGGER = polyinterface.LOGGER
+LOGGER = udi_interface.LOGGER
 
 @node_funcs.add_functions_as_methods(node_funcs.functions)
-class DailyNode(polyinterface.Node):
+class DailyNode(udi_interface.Node):
     id = 'daily'
     # TODO: add wind speed min/max, pop, winddir min/max
     drivers = [

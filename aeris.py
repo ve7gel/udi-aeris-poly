@@ -1,26 +1,23 @@
 #!/usr/bin/env python3
 """
-Polyglot v2 node server AERIS weather data
-Copyright (C) 2019,2020 Robert Paauwe
+Polyglot v3 node server AERIS weather data
+Copyright (C) 2019,2020,2021 Robert Paauwe
 """
 
-try:
-    import polyinterface
-except ImportError:
-    import pgc_interface as polyinterface
+import udi_interface
 import sys
 import time
 from nodes import aeris
 from nodes import aeris_daily
 
-LOGGER = polyinterface.LOGGER
+LOGGER = udi_interface.LOGGER
 
 if __name__ == "__main__":
     try:
-        polyglot = polyinterface.Interface('AERIS')
+        polyglot = udi_interface.Interface([aeris.Controller, aeris_daily.DailyNode])
         polyglot.start()
-        control = aeris.Controller(polyglot)
-        control.runForever()
+        control = aeris.Controller(polyglot, 'controller', 'controller', 'AERIS Weather')
+        polyglot.runForever()
     except (KeyboardInterrupt, SystemExit):
         sys.exit(0)
         

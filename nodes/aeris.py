@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 """
-Polyglot v2 node server AERIS weather data
-Copyright (C) 2019,2020 Robert Paauwe
+Polyglot v3 node server AERIS weather data
+Copyright (C) 2019,2020,2021 Robert Paauwe
 """
 
-try:
-    import polyinterface
-except ImportError:
-    import pgc_interface as polyinterface
+import udi_interface
 import sys
 import time
 import datetime
@@ -21,23 +18,24 @@ from nodes import aeris_daily
 from nodes import uom
 from nodes import weather_codes as wx
 
-LOGGER = polyinterface.LOGGER
+LOGGER = udi_interface.LOGGER
+Custom = udi_interface.Custom
 
 @node_funcs.add_functions_as_methods(node_funcs.functions)
-class Controller(polyinterface.Controller):
-    id = 'weather'
-    #id = 'controller'
-    hint = [0,0,0,0]
-    def __init__(self, polyglot):
-        super(Controller, self).__init__(polyglot)
-        self.name = 'AERIS Weather'
-        self.address = 'weather'
-        self.primary = self.address
+class Controller(udi_interface.Node):
+    id = 'controller'
+    def __init__(self, polyglot, primary, address, name):
+        self.poly = polyglot
+        self.name = name
+        self.address = address
+        self.primary = primary
         self.configured = False
         self.latitude = 0
         self.longitude = 0
         self.force = True
         self.tag = {}
+        self.Notices = Custom(polyglot, 'notices')
+        self.Parameters = Custom(polyglot, 'customparams')
 
         self.params = node_funcs.NSParameters([{
             'name': 'ClientID',
@@ -84,41 +82,47 @@ class Controller(polyinterface.Controller):
             ])
 
 
-        self.poly.onConfig(self.process_config)
+        self.poly.onConfig(self.configHandler)
+        self.poly.onCustomParams(self.parameterHandler)
+        self.poly.onStart(self.start)
+        self.poly.onPoll(self.poll)
 
-    # Process changes to customParameters
-    def process_config(self, config):
-        (valid, changed) = self.params.update_from_polyglot(config)
-        if changed and not valid:
-            LOGGER.debug('-- configuration not yet valid')
-            self.removeNoticesAll()
-            self.params.send_notices(self)
-        elif changed and valid:
-            LOGGER.debug('-- configuration is valid')
-            self.removeNoticesAll()
+        self.poly.addNode(self)
+
+    def parameterHandler(self, params):
+        self.Parameters.load(params)
+        self.params.update(self.Parameters)
+        if self.params.isConfigured():
+            self.Notices.clear()
             self.configured = True
             if self.params.isSet('Forecast Days'):
                 self.discover()
-        elif valid:
-            LOGGER.debug('-- configuration not changed, but is valid')
+
+    # Process changes to customParameters
+    def configHandler(self, config):
+        LOGGER.info('new config = {}'.format(config))
 
     def start(self):
         LOGGER.info('Starting node server')
         self.check_params()
+        self.poly.updateProfile()
         self.set_tags(self.params.get('Units'))
+
         self.discover()
-        LOGGER.info('Node server started')
 
         # Do an initial query to get filled in as soon as possible
-        self.query_conditions()
-        self.query_forecast()
-        self.force = False
+        if self.configured:
+            self.query_conditions()
+            self.query_forecast()
+            self.force = False
 
-    def longPoll(self):
-        self.query_forecast()
+        LOGGER.info('Node server started')
 
-    def shortPoll(self):
-        self.query_conditions()
+    def poll(self, longpoll):
+        if longpoll:
+            self.query_forecast()
+        else:
+            self.query_conditions()
 
     # Query for the condition an forecast data
     def get_weather_data(self, extra, lat=None, long=None):
@@ -388,25 +392,20 @@ class Controller(polyinterface.Controller):
     def stop(self):
         LOGGER.info('Stopping node server')
 
-    def update_profile(self, command):
-        st = self.poly.installprofile()
-        return st
-
     def check_params(self):
-        self.removeNoticesAll()
+        self.Notices.clear()
 
-        if self.params.get_from_polyglot(self):
+        if self.params.isConfigured():
             LOGGER.debug('All required parameters are set!')
             self.configured = True
             if int(self.params.get('Forecast Days')) > 6:
-                addNotice('Number of days of forecast data is limited to 6 days', 'forecast')
+                # TODO: Set a notice: 'Number of days of forecast data is limited to 6 days'
                 self.params.set('Forecast Days', 6)
         else:
-            LOGGER.debug('Configuration required.')
-            LOGGER.debug('ClientID = ' + self.params.get('ClientID'))
-            LOGGER.debug('ClientSecret = ' + self.params.get('ClientSecret'))
-            LOGGER.debug('Location = ' + self.params.get('Location'))
-            self.params.send_notices(self)
+            LOGGER.info('User configuration required.')
+            self.Notices.load(self.params.activeNotices())
+
+        self.params.save(self.Parameters)
 
     # Set the uom dictionary based on current user units preference
     def set_driver_uom(self, units):
@@ -417,32 +416,11 @@ class Controller(polyinterface.Controller):
             self.nodes[address].set_driver_uom(units)
 
     def remove_notices_all(self, command):
-        self.removeNoticesAll()
-
-    def set_logging_level(self, level=None):
-        if level is None:
-            try:
-                # level = self.getDriver('GVP')
-                level = self.get_saved_log_level()
-            except:
-                LOGGER.error('set_logging_level: get saved log level failed.')
-
-            if level is None:
-                level = 30
-
-            level = int(level)
-        else:
-            level = int(level['value'])
-
-        # self.setDriver('GVP', level, True, True)
-        self.save_log_level(level)
-        LOGGER.info('set_logging_level: Setting log level to %d' % level)
-        LOGGER.setLevel(level)
+        self.Notices.clear()
 
     commands = {
-            'UPDATE_PROFILE': update_profile,
             'REMOVE_NOTICES_ALL': remove_notices_all,
-            'DEBUG': set_logging_level,
+            'QUERY': query,
             }
 
     # For this node server, all of the info is available in the single
