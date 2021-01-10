@@ -30,8 +30,8 @@ def update_driver(self, driver, value, force=False, prec=3):
             value = "0"
         self.setDriver(driver, round(float(value), prec), True, force, self.uom[driver])
         LOGGER.debug('setDriver (%s, %f)' %(driver, float(value)))
-    except:
-        LOGGER.warning('Missing data for driver ' + driver)
+    except Exception as e:
+        LOGGER.warning('Error updating {}: {}'.format(driver, e))
 
 functions = (update_driver,)
 
