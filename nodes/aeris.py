@@ -17,23 +17,27 @@ import node_funcs
 from nodes import aeris_daily
 from nodes import uom
 from nodes import weather_codes as wx
+from nodes import query
 
 LOGGER = udi_interface.LOGGER
 Custom = udi_interface.Custom
 
 @node_funcs.add_functions_as_methods(node_funcs.functions)
 class Controller(udi_interface.Node):
-    id = 'controller'
+    id = 'weather'
     def __init__(self, polyglot, primary, address, name):
-        self.poly = polyglot
-        self.name = name
-        self.address = address
-        self.primary = primary
+        super(Controller, self).__init__(polyglot, primary, address, name)
+
+        self.poly = polyglot    # redundent
+        self.name = name        # redundent
+        self.address = address  # redundent
+        self.primary = primary  # redundent
         self.configured = False
-        self.latitude = 0
-        self.longitude = 0
+        #self.latitude = 0
+        #self.longitude = 0
         self.force = True
-        self.tag = {}
+        #self.tag = {}
+        self.node_added_count = 0
         self.Notices = Custom(polyglot, 'notices')
         self.Parameters = Custom(polyglot, 'customparams')
 
@@ -81,289 +85,81 @@ class Controller(udi_interface.Node):
             },
             ])
 
+        self.q = query.queries(self.poly)
 
         self.poly.onConfig(self.configHandler)
         self.poly.onCustomParams(self.parameterHandler)
-        self.poly.onStart(self.start)
+        self.poly.onStart(self.address, self.start)
         self.poly.onPoll(self.poll)
+        self.poly.onAddNodeDone(self.nodeHandler)
 
         self.poly.addNode(self)
 
+    # Process changes to customParameters
     def parameterHandler(self, params):
         self.Parameters.load(params)
         self.params.update(self.Parameters)
+
+        self.q.units = self.params.get('Units')
+        self.q.location = self.params.get('Location')
+        self.q.client_id = self.params.get('ClientID')
+        self.q.client_secret = self.params.get('ClientSecret')
+        self.q.plant_type = self.params.get('Plant Type')
+        self.q.days = self.params.get('Forecast Days')
+        self.q.elevation = self.params.get('Elevation')
+
         if self.params.isConfigured():
             self.Notices.clear()
             self.configured = True
-            if self.params.isSet('Forecast Days'):
+            # check if number of forecast days has changed
+            if self.params.isSet('Forecast Days') and self.Parameters.isChanged('Forecast Days'):
+                LOGGER.critical('CALLING DISCOVERY from parameter Handler')
                 self.discover()
 
-    # Process changes to customParameters
     def configHandler(self, config):
-        LOGGER.info('new config = {}'.format(config))
+        LOGGER.info('handle config = {}'.format(config))
+
+    def nodeHandler(self, data):
+        self.node_added_count += 1
+        LOGGER.debug('Handling node add done for {}'.format(data.get('address')))
+
 
     def start(self):
         LOGGER.info('Starting node server')
         self.check_params()
         self.poly.updateProfile()
-        self.set_tags(self.params.get('Units'))
+        self.poly.setCustomParamsDoc()
+        #self.set_tags(self.params.get('Units'))
 
+        LOGGER.critical('CALLING DISCOVERY from start')
         self.discover()
 
         # Do an initial query to get filled in as soon as possible
         if self.configured:
-            self.query_conditions()
-            self.query_forecast()
+            self.q.configured = True
+            self.q.query_conditions(self.update_driver, self.force)
+            self.q.query_forecasts(self.force)
             self.force = False
 
         LOGGER.info('Node server started')
 
     def poll(self, longpoll):
         if longpoll:
-            self.query_forecast()
+            self.q.query_forecasts(self.force)
         else:
-            self.query_conditions()
-
-    # Query for the condition an forecast data
-    def get_weather_data(self, extra, lat=None, long=None):
-        request = 'http://api.aerisapi.com/' + extra + '/'
-
-        request += self.params.get('Location')
-        request += '?client_id=' + self.params.get('ClientID')
-        request += '&client_secret=' + self.params.get('ClientSecret')
-
-        if extra == 'forecasts':
-            request += '&filter=mdnt2mdnt'
-            request += '&precise'
-            request += '&limit=' + self.params.get('Forecast Days')
-
-        if extra == 'observations/summary':
-            request += '&fields=periods.summary.precip'
-
-        #FIXME: add unit support if available
-        #request += '&units=' + self.units
-
-        LOGGER.debug('request = %s' % request)
-
-        try:
-            c = requests.get(request)
-            jdata = c.json()
-            c.close()
-            LOGGER.debug(jdata)
-        except:
-            LOGGER.error('HTTP request failed for api.aerisapi.com')
-            jdata = None
-
-        return jdata
-
-    def set_tags(self, units):
-        if units == 'metric':
-            self.tag['temperature'] = 'tempC'
-            self.tag['humidity'] = 'humidity'
-            self.tag['pressure'] = 'pressureMB'
-            self.tag['windspeed'] = 'windSpeedKPH'
-            self.tag['gustspeed'] = 'windGustKPH'
-            self.tag['winddir'] = 'windDirDEG'
-            self.tag['visibility'] = 'visibilityKM'
-            self.tag['precipitation'] = 'precipMM'
-            self.tag['snow'] = 'snowDepthCM'
-            self.tag['snowf'] = 'snowCM'
-            self.tag['dewpoint'] = 'dewpointC'
-            self.tag['heatindex'] = 'heatindexC'
-            self.tag['windchill'] = 'windchillC'
-            self.tag['feelslike'] = 'feelslikeC'
-            self.tag['solarrad'] = 'solradWM2'
-            self.tag['sky'] = 'sky'
-            self.tag['temp_min'] = 'minTempC'
-            self.tag['temp_max'] = 'maxTempC'
-            self.tag['humidity_min'] = 'minHumidity'
-            self.tag['humidity_max'] = 'maxHumidity'
-            self.tag['wind_min'] = 'windSpeedMinKPH'
-            self.tag['wind_max'] = 'windSpeedMaxKPH'
-            self.tag['winddir_min'] = 'windDirMinDEG'
-            self.tag['winddir_max'] = 'windDirMaxDEG'
-            self.tag['uv'] = 'uvi'
-            self.tag['pop'] = 'pop'
-            self.tag['timestamp'] = 'timestamp'
-            self.tag['precip_summary'] = 'totalMM'
-        else:
-            self.tag['temperature'] = 'tempF'
-            self.tag['humidity'] = 'humidity'
-            self.tag['pressure'] = 'pressureIN'
-            self.tag['windspeed'] = 'windSpeedMPH'
-            self.tag['gustspeed'] = 'windGustMPH'
-            self.tag['winddir'] = 'windDirDEG'
-            self.tag['visibility'] = 'visibilityMI'
-            self.tag['precipitation'] = 'precipIN'
-            self.tag['snow'] = 'snowDepthIN'
-            self.tag['snowf'] = 'snowIN'
-            self.tag['dewpoint'] = 'dewpointF'
-            self.tag['heatindex'] = 'heatindexF'
-            self.tag['windchill'] = 'windchillF'
-            self.tag['feelslike'] = 'feelslikeF'
-            self.tag['solarrad'] = 'solradWM2'
-            self.tag['sky'] = 'sky'
-            self.tag['temp_min'] = 'minTempF'
-            self.tag['temp_max'] = 'maxTempF'
-            self.tag['humidity_min'] = 'minHumidity'
-            self.tag['humidity_max'] = 'maxHumidity'
-            self.tag['wind_min'] = 'windSpeedMinMPH'
-            self.tag['wind_max'] = 'windSpeedMaxMPH'
-            self.tag['winddir_min'] = 'windDirMinDEG'
-            self.tag['winddir_max'] = 'windDirMaxDEG'
-            self.tag['uv'] = 'uvi'
-            self.tag['pop'] = 'pop'
-            self.tag['timestamp'] = 'timestamp'
-            self.tag['precip_summary'] = 'totalIN'
-
-    def query_conditions(self):
-        # Query for the current conditions. We can do this fairly
-        # frequently, probably as often as once a minute.
-
-        if not self.configured:
-            LOGGER.info('Skipping connection because we aren\'t configured yet.')
-            return
-
-        precipitation = 0
-
-        try:
-            jdata = self.get_weather_data('observations')
-            if jdata == None:
-                LOGGER.error('Current condition query returned no data')
-                return
-            '''
-            Data from query has multiple units. Which one we want to use depends
-            on what the user has selected.  Since we set the node to metric by
-            default, lets just use those for testing.
-            '''
-        
-            #jdata['response']['ob']['tempC']
-            if 'response' not in jdata:
-                LOGGER.error('No response object in query response.')
-                return
-
-            if 'ob' not in jdata['response']:
-                LOGGER.error('No observation object in query response.')
-                return
-
-            if 'loc' in jdata['response']:
-                if 'lat' in jdata['response']['loc']:
-                    self.latitude = float(jdata['response']['loc']['lat'])
-                else:
-                    LOGGER.error('No latitude data in response.')
-            else:
-                LOGGER.error('No location data in response.')
-
-            ob = jdata['response']['ob']
-
-            self.update_driver('CLITEMP', ob[self.tag['temperature']])
-            self.update_driver('CLIHUM', ob[self.tag['humidity']])
-            self.update_driver('BARPRES', ob[self.tag['pressure']])
-            self.update_driver('SPEED', ob[self.tag['windspeed']])
-            self.update_driver('GV5', ob[self.tag['gustspeed']])
-            self.update_driver('WINDDIR', ob[self.tag['winddir']])
-            self.update_driver('DISTANC', ob[self.tag['visibility']])
-            self.update_driver('DEWPT', ob[self.tag['dewpoint']])
-            self.update_driver('GV3', ob[self.tag['heatindex']])
-            self.update_driver('GV4', ob[self.tag['windchill']])
-            self.update_driver('GV2', ob[self.tag['feelslike']])
-            self.update_driver('SOLRAD', ob[self.tag['solarrad']])
-            self.update_driver('UV', ob[self.tag['uv']])
-            self.update_driver('GV15', ob[self.tag['snow']])
-            # Weather conditions:
-            #  ob['weather']
-            #  ob['weatherShort']
-            #  ob['weatherCoded']
-            #    [coverage] : [intensity] : [weather]
-            #     -- these can be mapped to strings
-
-            LOGGER.debug('**>>> WeatherCoded = ' + ob['weatherCoded']);
-            weather = ob['weatherCoded'].split(':')[0]
-            self.update_driver('GV11', wx.coverage_codes(weather))
-            weather = ob['weatherCoded'].split(':')[1]
-            self.update_driver('GV12', wx.intensity_codes(weather))
-            weather = ob['weatherCoded'].split(':')[2]
-            LOGGER.debug('>>>  weather = ' + weather)
-            self.update_driver('GV13', wx.weather_codes(weather))
-            LOGGER.debug('>>>  Setting GV13 to ' + str(wx.weather_codes(weather)))
-
-            # cloud cover
-            #  ob['cloudsCoded'] ??
-            self.update_driver('GV14', ob['sky'])
-
-            # precipitation
-            precipitation = ob[self.tag['precipitation']]
-
-            '''
-            TODO:
-            - weather
-            - snow depth
-            - ceiling
-            - light
-            '''
-
-        except Exception as e:
-            LOGGER.error('Current observation update failure')
-            LOGGER.error(e)
-
-        try:
-            # Get precipitation summary
-            jdata = self.get_weather_data('observations/summary')
-            if jdata == None:
-                LOGGER.error('Precipitation summary query returned no data')
-                return
-            if 'response' not in jdata:
-                LOGGER.error('No response object in query response.')
-                return
-            #LOGGER.debug(jdata)
-            if type(jdata['response']) is list:
-                rd = jdata['response'][0]['periods'][0]['summary']
-            else:
-                rd = jdata['response']['periods'][0]['summary']
-            if 'precip' in rd:
-                LOGGER.debug('Setting precipitation to: ' + str(rd['precip'][self.tag['precip_summary']]))
-                self.update_driver('GV6', rd['precip'][self.tag['precip_summary']])
-        except Exception as e:
-            LOGGER.error('Precipitation summary update failure')
-            LOGGER.error(e)
-            self.update_driver('GV6', precipitation)
-                
-
-    def query_forecast(self):
-        if not self.configured:
-            LOGGER.info('Skipping connection because we aren\'t configured yet.')
-            return
-
-        try:
-            jdata = self.get_weather_data('forecasts')
-            if jdata == None:
-                LOGGER.error('Current condition query returned no data')
-                return
-
-            # Records are for each day, midnight to midnight
-            day = 0
-            if 'periods' in jdata['response'][0]:
-                LOGGER.debug('Processing periods: %d' % len(jdata['response'][0]['periods']))
-                for forecast in jdata['response'][0]['periods']:
-                    address = 'forecast_' + str(day)
-                    LOGGER.debug(' >>>>   period ' + forecast['dateTimeISO'] + '  ' + address)
-                    self.nodes[address].update_forecast(forecast, self.latitude, self.params.get('Elevation'), self.params.get('Plant Type'), self.tag, self.force)
-                    day += 1
-                    if day >= int(self.params.get('Forecast Days')):
-                        return
-
-        except Exception as e:
-            LOGGER.error('Forecast data failure: ' + str(e))
-
+            self.q.query_conditions(self.update_driver, force)
 
     def query(self):
-        for node in self.nodes:
-            self.nodes[node].reportDrivers()
+        nodes = self.poly.getNodes()
+        for node in nodes:
+            nodes[node].reportDrivers()
 
     def discover(self, *args, **kwargs):
         # Create any additional nodes here
         LOGGER.info("In Discovery...")
+        LOGGER.critical("In Discovery...")
 
+        node_count = 0
         num_days = int(self.params.get('Forecast Days'))
         if num_days < 7:
             # delete any extra days
@@ -374,16 +170,30 @@ class Controller(udi_interface.Node):
                 except:
                     LOGGER.debug('Failed to delete node ' + address)
 
+        nodes = self.poly.getNodes()
         for day in range(0,num_days):
             address = 'forecast_' + str(day)
             title = 'Forecast ' + str(day)
-            try:
-                node = aeris_daily.DailyNode(self, self.address, address, title)
-                self.addNode(node)
-            except:
-                LOGGER.error('Failed to create forecast node ' + title)
+            if address not in nodes:
+                try:
+                    LOGGER.error('Creating forecast node {} {}'.format(address,title))
+                    node = aeris_daily.DailyNode(self.poly, self.address, address, title)
+                    node_count += 1
+                    LOGGER.error('Adding forecast node {}'.format(title))
+                    LOGGER.critical('Adding forecast node {}'.format(title))
+                    self.poly.addNode(node)
+                except Exception as e:
+                    LOGGER.error('Failed to create forecast node ' + title)
+                    LOGGER.error('  -> {}'.format(e))
 
-        self.set_driver_uom(self.params.get('Units'))
+                self.set_driver_uom(self.params.get('Units'))
+            else:
+                LOGGER.debug('Forecast node {} already exist.'.format(address))
+
+        # wait for all nodes to be added before continuing
+        while self.node_added_count < (1 + node_count):
+            time.sleep(2)
+
 
     # Delete the node server from Polyglot
     def delete(self):
@@ -403,7 +213,7 @@ class Controller(udi_interface.Node):
                 self.params.set('Forecast Days', 6)
         else:
             LOGGER.info('User configuration required.')
-            self.Notices.load(self.params.activeNotices())
+            self.Notices.load(self.params.activeNotices(), True)
 
         self.params.save(self.Parameters)
 
@@ -411,9 +221,17 @@ class Controller(udi_interface.Node):
     def set_driver_uom(self, units):
         LOGGER.info('Configure driver units to ' + units)
         self.uom = uom.get_uom(units)
-        for day in range(0, int(self.params.get('Forecast Days'))):
-            address = 'forecast_' + str(day)
-            self.nodes[address].set_driver_uom(units)
+
+        # Need to figure out how to get access to the nodes.  Should I
+        # be tracking the child nodes or can we get the list from the
+        # interface?
+        LOGGER.error('Getnodes returns {}'.format(self.poly.getNodes()))
+        nodes = self.poly.getNodes()
+        for node in nodes:
+            LOGGER.error('Checking for non-controller node {}'.format(node))
+            if node != "controller":
+                LOGGER.error('Setting uom for node {}'.format(node))
+                nodes[node].set_driver_uom(units)
 
     def remove_notices_all(self, command):
         self.Notices.clear()
