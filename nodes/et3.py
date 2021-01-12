@@ -6,6 +6,19 @@
 
 import math
 
+# Variables
+tMin = 0
+tMax = 0
+hMin = 0
+hMax = 0
+solarRadiation = None
+elevation = 0
+plantType = 0.23
+latitude = 0
+windSpeed = 0
+julianDay = 0
+
+
 # Formulas and constants
 vaporRate = 237.3
 enthalpy = 17.27
@@ -195,6 +208,93 @@ def evapotranspriation(max_t, min_t, solar_radiation, avg_ws, elevation, max_h, 
     # step final
     return radiation_term + wind_term
 
+
+"""
+Use the global scope'd variables instead of passing in everything. 
+This is to simulate what we might do with a class that may want to
+build up the values over time.  I.E. get humidity values every 5
+minutes during the day and tack min/max.
+"""
+def get_et0():
+
+    # step 1, mean daily air temperature C
+    mean_daily_temp = (tMax + tMin) / 2.0
+
+    # step 2, mean solar radiation in mgajoules / m2
+    #Rs = w2mj(solarRadiation)
+
+    # step 4, slope of saturation vapor pressure curve
+    vp_slope = saturation_vapor_pressure_curve_slope(mean_daily_temp)
+
+    # step 5, atmospheric pressure
+    pressure = atmospheric_pressure(elevation)
+
+    # step 6, psychrometric constant
+    psychrometric = psychrometric_constant(pressure)
+
+    # step 7, delta term
+    delta = delta_term(vp_slope, psychrometric, windSpeed)
+
+    # step 8, psi term
+    psi = psi_term(vp_slope, psychrometric, windSpeed)
+
+    # step 9, temperature term
+    t_term = temperature_term(mean_daily_temp, windSpeed)
+
+    # step 10, mean saturation vapor pressure curve
+    vp_curve = (saturation_vapor(tMax) + saturation_vapor(tMin)) / 2
+
+    # step 11, actual vapor pressure
+    vp_actual = saturation_vapor_pressure_actual(tMin, tMax, hMin, hMax)
+
+    # step 11.1, vapor pressure deficit
+    vp_deficit = vp_curve - vp_actual
+
+    # step 12.1, relative sun earth distance
+    dist = relative_earth_sun_distance(julianDay)
+
+    # step 12.2, solar declination
+    declination = solar_declination(julianDay)
+
+    # step 13, latitude in radians
+    latitude_r = deg2rad(latitude)
+
+    ## Testing solar radiation calculation
+    if solarRadiation is None:
+        Rs = calc_solar_radiation(tMin, tMax, latitude_r, declination, julianDay)
+    else:
+        Rs = w2mj(solarRadiation)
+
+    # step 14, sunset hour angle
+    angle = sunset_hour_angle(latitude_r, declination)
+
+    # step 15, extraerrestrial radiation
+    Ra = extraterrestrial_radiation(dist, angle, latitude_r, declination)
+
+    # step 16, clear sky solar radiation
+    Rso = clear_sky_solar_radiation(elevation, Ra)
+
+    # step 17, net solar radiation
+    Rns = (1 - plantType) * Rs
+
+    # step 18, net outgoing long wave solar radiation
+    Rnl = long_wave_radiation(tMin, tMax, vp_actual, Rs, Rso)
+
+    # step 19, net radiation
+    Rn = Rns - Rnl
+
+    # step 19.1, net radiation in mm
+    Rng = Rn * 0.408
+
+    # step FS1, radiation term ETrad
+    radiation_term = delta * Rng
+
+
+    # step FS2, wind term ETwind
+    wind_term = psi * t_term * (vp_curve - vp_actual)
+
+    # step final
+    return radiation_term + wind_term
 
 
 

@@ -33,6 +33,7 @@ class Controller(udi_interface.Node):
         self.address = address  # redundent
         self.primary = primary  # redundent
         self.configured = False
+        self.private = 'My controller private info'
         #self.latitude = 0
         #self.longitude = 0
         self.force = True
@@ -121,7 +122,10 @@ class Controller(udi_interface.Node):
 
     def nodeHandler(self, data):
         self.node_added_count += 1
+
+        # testing...
         LOGGER.debug('Handling node add done for {}'.format(data.get('address')))
+        LOGGER.debug('******************  node private = {}'.format(data.get('private')))
 
 
     def start(self):
@@ -137,17 +141,17 @@ class Controller(udi_interface.Node):
         # Do an initial query to get filled in as soon as possible
         if self.configured:
             self.q.configured = True
-            self.q.query_conditions(self.update_driver, self.force)
-            self.q.query_forecasts(self.force)
+            self.q.query_conditions(self.address, self.params.get('Units'), self.force)
+            self.q.query_forecasts(self.params.get('Units'), self.force)
             self.force = False
 
         LOGGER.info('Node server started')
 
     def poll(self, longpoll):
         if longpoll:
-            self.q.query_forecasts(self.force)
+            self.q.query_forecasts(self.params.get('Units'), self.force)
         else:
-            self.q.query_conditions(self.update_driver, force)
+            self.q.query_conditions(self.address, self.params.get('Units'), self.force)
 
     def query(self):
         nodes = self.poly.getNodes()
@@ -157,7 +161,6 @@ class Controller(udi_interface.Node):
     def discover(self, *args, **kwargs):
         # Create any additional nodes here
         LOGGER.info("In Discovery...")
-        LOGGER.critical("In Discovery...")
 
         node_count = 0
         num_days = int(self.params.get('Forecast Days'))
@@ -176,17 +179,17 @@ class Controller(udi_interface.Node):
             title = 'Forecast ' + str(day)
             if address not in nodes:
                 try:
-                    LOGGER.error('Creating forecast node {} {}'.format(address,title))
-                    node = aeris_daily.DailyNode(self.poly, self.address, address, title)
+                    LOGGER.info('Creating forecast node {} {}'.format(address,title))
+                    node = aeris_daily.DailyNode(self.poly, self.address, address, title, self.params.get('Units'))
+                    node.private = 'private data for ' + address
+                    node.plant_type = self.params.get('Plant Type')
+                    node.elevation = self.params.get('Elevation')
                     node_count += 1
-                    LOGGER.error('Adding forecast node {}'.format(title))
-                    LOGGER.critical('Adding forecast node {}'.format(title))
+                    LOGGER.debug('Adding forecast node {}'.format(title))
                     self.poly.addNode(node)
                 except Exception as e:
                     LOGGER.error('Failed to create forecast node ' + title)
                     LOGGER.error('  -> {}'.format(e))
-
-                self.set_driver_uom(self.params.get('Units'))
             else:
                 LOGGER.debug('Forecast node {} already exist.'.format(address))
 

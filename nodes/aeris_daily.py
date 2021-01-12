@@ -5,8 +5,7 @@ import json
 import time
 import datetime
 from nodes import et3
-from nodes import uom
-from nodes import weather_codes as wx
+from nodes import query
 import node_funcs
 
 LOGGER = udi_interface.LOGGER
@@ -14,6 +13,7 @@ LOGGER = udi_interface.LOGGER
 @node_funcs.add_functions_as_methods(node_funcs.functions)
 class DailyNode(udi_interface.Node):
     id = 'daily'
+    private = 'This is my private info'
     # TODO: add wind speed min/max, pop, winddir min/max
     drivers = [
             {'driver': 'GV19', 'value': 0, 'uom': 25},     # day of week
@@ -35,83 +35,44 @@ class DailyNode(udi_interface.Node):
             {'driver': 'UV', 'value': 0, 'uom': 71},       # UV index
             {'driver': 'GV20', 'value': 0, 'uom': 106},    # mm/day
             ]
-    uom = {'GV19': 25,
-            'GV0': 4,
-            'GV1': 4,
-            'CLIHUM': 22,
-            'BARPRES': 117,
-            'GV11': 25,
-            'GV12': 25,
-            'GV13': 25,
-            'GV14': 22,
-            'GV15': 82,
-            'SPEED': 32,
-            'GV5': 32,
-            'GV6': 82,
-            'GV7': 32,
-            'GV8': 32,
-            'UV': 71,
-            'GV20': 106,
-            'GV18': 22,
-            }
 
-    def set_driver_uom(self, units):
-        self.uom = uom.get_uom(units)
+    def __init__(self, polyglot, primary, address, name, units):
+        super(DailyNode, self).__init__(polyglot, primary, address, name)
+
+        self.elevation = 0
+        self.plant_type = 0.23
         self.units = units
+        self.min_humidity = 0
+        self.max_humidity = 0
 
     def mm2inch(self, mm):
-        return mm/25.4
+        return round(mm/25.4, 2)
 
+    def getDriverValue(self, driver):
+        for d in self.drivers:
+            if d['driver'] == driver:
+                return d['value']
+        LOGGER.error('{} not found in drivers array'.format(driver))
+        return -1
 
-    def update_forecast(self, forecast, latitude, elevation, plant_type, tags, force):
+    """
+      Elevation - set at init
+      plant type - set at init
 
-        epoch = int(forecast['timestamp'])
-        dow = time.strftime("%w", time.gmtime(epoch))
-        LOGGER.info('Day of week = ' + dow)
-        LOGGER.info(tags)
+      temperature min/max - available from drivers GV1/GV0
+      windspeed - available from drivers (SPEED)
+      humidity min/max -- ??? In data, but not in drivers
+    """
 
-        humidity = (forecast[tags['humidity_min']] + forecast[tags['humidity_max']]) / 2
-        try:
-            self.update_driver('CLIHUM', humidity, force, prec=0)
-            self.update_driver('BARPRES', forecast[tags['pressure']], force, prec=1)
-            self.update_driver('GV0', forecast[tags['temp_max']], force, prec=1)
-            self.update_driver('GV1', forecast[tags['temp_min']], force, prec=1)
-            self.update_driver('GV14', forecast['sky'], force, prec=0)
-            self.update_driver('SPEED', forecast[tags['windspeed']], force, prec=1)
-            self.update_driver('GV5', forecast[tags['gustspeed']], force, prec=1)
-            self.update_driver('GV6', forecast[tags['precipitation']], force, prec=1)
-            self.update_driver('GV7', forecast[tags['wind_max']], force, prec=1)
-            self.update_driver('GV8', forecast[tags['wind_min']], force, prec=1)
-            if tags['snowf'] in forecast:
-                if self.units == 'metric':
-                    snow = float(forecast[tags['snowf']]) * 10
-                else:
-                    snow = float(forecast[tags['snowf']])
-
-                self.update_driver('GV15', snow, force, prec=2)
-            self.update_driver('GV19', int(dow), force)
-            self.update_driver('UV', forecast['uvi'], force, prec=1)
-            self.update_driver('GV18', forecast['pop'], force, prec=1)
-
-            LOGGER.debug('Forecast coded weather = ' + forecast['weatherPrimaryCoded'])
-            weather = forecast['weatherPrimaryCoded'].split(':')[0]
-            self.update_driver('GV11', wx.coverage_codes(weather), force)
-            weather = forecast['weatherPrimaryCoded'].split(':')[1]
-            self.update_driver('GV12', wx.intensity_codes(weather), force)
-            weather = forecast['weatherPrimaryCoded'].split(':')[2]
-            self.update_driver('GV13', wx.weather_codes(weather), force)
-
-        except Exception as e:
-            LOGGER.error('Forcast: ' + str(e))
-
+    def set_ETo(self, epoch, latitude, force):
         # Calculate ETo
         #  Temp is in degree C and windspeed is in m/s, we may need to
         #  convert these.
         J = datetime.datetime.fromtimestamp(epoch).timetuple().tm_yday
 
-        Tmin = forecast[tags['temp_min']]
-        Tmax = forecast[tags['temp_max']]
-        Ws = forecast[tags['windspeed']]
+        Tmin = self.getDriverValue('GV1')
+        Tmax = self.getDriverValue('GV0')
+        Ws = self.getDriverValue('SPEED')
         if self.units != 'metric':
             LOGGER.info('Conversion of temperature/wind speed required')
             Tmin = et3.FtoC(Tmin)
@@ -120,9 +81,23 @@ class DailyNode(udi_interface.Node):
         else:
             Ws = et3.kph2ms(Ws)
 
-        et0 = et3.evapotranspriation(Tmax, Tmin, None, Ws, float(elevation), forecast[tags['humidity_max']], forecast[tags['humidity_min']], latitude, float(plant_type), J)
-        if self.units == 'metric' or self.units == 'si' or self.units.startswith('m'):
-            self.update_driver('GV20', round(et0, 2), force)
-        else:
-            self.update_driver('GV20', self.mm2inch(et0), force, prec=3)
-        LOGGER.info("ETo = %f %f" % (et0, self.mm2inch(et0)))
+        #et0 = et3.evapotranspriation(Tmax, Tmin, None, Ws, float(self.elevation), self.max_humidity, self.min_humidity, latitude, float(self.plant_type), J)
+
+        et3.tMin = Tmin
+        et3.tMax = Tmax
+        et3.julianDay = datetime.datetime.fromtimestamp(epoch).timetuple().tm_yday
+        et3.windSpeed = Ws
+        et3.elevation = float(self.elevation)
+        et3.hMin = self.min_humidity
+        et3.hMax = self.max_humidity
+        et3.latitude = latitude
+        et3.plantType = float(self.plant_type)
+        et0 = et3.get_et0()
+
+        # et0 is in mm/hr.  If the user wants imperial or uk units, it needs to be converted.
+        if self.units == 'imperial' or self.units == 'uk':
+            et0 = self.mm2inch(et0)
+        
+        wmap = query.WeatherData(self.units)
+        self.setDriver('GV20', et0, True, force, wmap.uom('GV20'))
+        LOGGER.info('ETo = {}'.format(et0))
