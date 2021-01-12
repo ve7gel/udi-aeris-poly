@@ -6,11 +6,9 @@ import time
 import datetime
 from nodes import et3
 from nodes import query
-import node_funcs
 
 LOGGER = udi_interface.LOGGER
 
-@node_funcs.add_functions_as_methods(node_funcs.functions)
 class DailyNode(udi_interface.Node):
     id = 'daily'
     private = 'This is my private info'

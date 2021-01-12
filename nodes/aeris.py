@@ -15,75 +15,34 @@ import re
 import json
 import node_funcs
 from nodes import aeris_daily
-from nodes import uom
-from nodes import weather_codes as wx
 from nodes import query
 
 LOGGER = udi_interface.LOGGER
 Custom = udi_interface.Custom
 
-@node_funcs.add_functions_as_methods(node_funcs.functions)
 class Controller(udi_interface.Node):
     id = 'weather'
     def __init__(self, polyglot, primary, address, name):
         super(Controller, self).__init__(polyglot, primary, address, name)
 
-        self.poly = polyglot    # redundent
-        self.name = name        # redundent
-        self.address = address  # redundent
-        self.primary = primary  # redundent
+        self.poly = polyglot
+        self.name = name
+        self.address = address
+        self.primary = primary
         self.configured = False
-        self.private = 'My controller private info'
-        #self.latitude = 0
-        #self.longitude = 0
         self.force = True
-        #self.tag = {}
         self.node_added_count = 0
         self.Notices = Custom(polyglot, 'notices')
         self.Parameters = Custom(polyglot, 'customparams')
 
-        self.params = node_funcs.NSParameters([{
-            'name': 'ClientID',
-            'default': 'set me',
-            'isRequired': True,
-            'notice': 'AERIS Client ID must be set',
-            },
-            {
-            'name': 'ClientSecret',
-            'default': 'set me',
-            'isRequired': True,
-            'notice': 'AERIS Client Secret must be set',
-            },
-            {
-            'name': 'Location',
-            'default': 'set me',
-            'isRequired': True,
-            'notice': 'AERIS location must be set',
-            },
-            {
-             'name': 'Units',
-            'default': 'imperial',
-            'isRequired': False,
-            'notice': '',
-            },
-            {
-            'name': 'Forecast Days',
-            'default': '0',
-            'isRequired': False,
-            'notice': '',
-            },
-            {
-            'name': 'Elevation',
-            'default': '0',
-            'isRequired': False,
-            'notice': '',
-            },
-            {
-            'name': 'Plant Type',
-            'default': '0.23',
-            'isRequired': False,
-            'notice': '',
-            },
+        self.params = node_funcs.NSParameters([
+            { 'name': 'ClientID', 'default': 'set me', 'isRequired': True, 'notice': 'AERIS Client ID must be set', },
+            { 'name': 'ClientSecret', 'default': 'set me', 'isRequired': True, 'notice': 'AERIS Client Secret must be set', },
+            { 'name': 'Location', 'default': 'set me', 'isRequired': True, 'notice': 'AERIS location must be set', },
+            { 'name': 'Units', 'default': 'imperial', 'isRequired': False, 'notice': '', },
+            { 'name': 'Forecast Days', 'default': '0', 'isRequired': False, 'notice': '', },
+            { 'name': 'Elevation', 'default': '0', 'isRequired': False, 'notice': '', },
+            { 'name': 'Plant Type', 'default': '0.23', 'isRequired': False, 'notice': '', },
             ])
 
         self.q = query.queries(self.poly)
@@ -118,7 +77,13 @@ class Controller(udi_interface.Node):
                 self.discover()
 
     def configHandler(self, config):
-        LOGGER.info('handle config = {}'.format(config))
+        # at this time the interface should have all the nodes
+        # included from the database.  Here's where we could 
+        # loop through those and create wrapped versions.
+        #LOGGER.info('handle config = {}'.format(config))
+        nodes = self.poly.getNodes()
+        for n in nodes:
+            LOGGER.info('Found node {} = {}'.format(n, nodes[n]))
 
     def nodeHandler(self, data):
         self.node_added_count += 1
@@ -133,7 +98,6 @@ class Controller(udi_interface.Node):
         self.check_params()
         self.poly.updateProfile()
         self.poly.setCustomParamsDoc()
-        #self.set_tags(self.params.get('Units'))
 
         LOGGER.critical('CALLING DISCOVERY from start')
         self.discover()
@@ -169,29 +133,27 @@ class Controller(udi_interface.Node):
             for day in range(num_days, 7):
                 address = 'forecast_' + str(day)
                 try:
-                    self.delNode(address)
+                    if self.poly.getNode(address):
+                        self.delNode(address)
                 except:
                     LOGGER.debug('Failed to delete node ' + address)
 
-        nodes = self.poly.getNodes()
         for day in range(0,num_days):
             address = 'forecast_' + str(day)
             title = 'Forecast ' + str(day)
-            if address not in nodes:
-                try:
-                    LOGGER.info('Creating forecast node {} {}'.format(address,title))
-                    node = aeris_daily.DailyNode(self.poly, self.address, address, title, self.params.get('Units'))
-                    node.private = 'private data for ' + address
-                    node.plant_type = self.params.get('Plant Type')
-                    node.elevation = self.params.get('Elevation')
-                    node_count += 1
-                    LOGGER.debug('Adding forecast node {}'.format(title))
-                    self.poly.addNode(node)
-                except Exception as e:
-                    LOGGER.error('Failed to create forecast node ' + title)
-                    LOGGER.error('  -> {}'.format(e))
-            else:
-                LOGGER.debug('Forecast node {} already exist.'.format(address))
+            try:
+                LOGGER.info('Creating forecast node {} {}'.format(address,title))
+                node = aeris_daily.DailyNode(self.poly, self.address, address, title, self.params.get('Units'))
+                node.private = 'private data for ' + address
+                node.plant_type = self.params.get('Plant Type')
+                node.elevation = self.params.get('Elevation')
+
+                LOGGER.debug('Adding forecast node {}'.format(title))
+                node_count += 1
+                self.poly.addNode(node)
+            except Exception as e:
+                LOGGER.error('Failed to create forecast node ' + title)
+                LOGGER.error('  -> {}'.format(e))
 
         # wait for all nodes to be added before continuing
         while self.node_added_count < (1 + node_count):
@@ -219,22 +181,6 @@ class Controller(udi_interface.Node):
             self.Notices.load(self.params.activeNotices(), True)
 
         self.params.save(self.Parameters)
-
-    # Set the uom dictionary based on current user units preference
-    def set_driver_uom(self, units):
-        LOGGER.info('Configure driver units to ' + units)
-        self.uom = uom.get_uom(units)
-
-        # Need to figure out how to get access to the nodes.  Should I
-        # be tracking the child nodes or can we get the list from the
-        # interface?
-        LOGGER.error('Getnodes returns {}'.format(self.poly.getNodes()))
-        nodes = self.poly.getNodes()
-        for node in nodes:
-            LOGGER.error('Checking for non-controller node {}'.format(node))
-            if node != "controller":
-                LOGGER.error('Setting uom for node {}'.format(node))
-                nodes[node].set_driver_uom(units)
 
     def remove_notices_all(self, command):
         self.Notices.clear()

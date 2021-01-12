@@ -7,35 +7,6 @@ import udi_interface
 LOGGER = udi_interface.LOGGER
 
 """
-    Some common functions to be used by node servers
-
-    To add these functions call the add_functions_as_methods()
-    function.  Then the functions specified in 'functions' below
-    will be available for use as if they were defined in the node's
-    primary class.
-"""
-def add_functions_as_methods(functions):
-    def decorator(Class):
-        for function in functions:
-            setattr(Class, function.__name__, function)
-        return Class
-    return decorator
-
-
-# Wrap all the setDriver calls so that we can check that the 
-# value exist first.
-def update_driver(self, driver, value, force=False, prec=3):
-    try:
-        if value == None or value == "None":
-            value = "0"
-        self.setDriver(driver, round(float(value), prec), True, force, self.uom[driver])
-        LOGGER.debug('setDriver (%s, %f)' %(driver, float(value)))
-    except Exception as e:
-        LOGGER.warning('Error updating {}: {}'.format(driver, e))
-
-functions = (update_driver,)
-
-"""
     Functions to handle custom parameters.
 
     pass in a list of name and default value parameters
