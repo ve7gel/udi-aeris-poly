@@ -200,11 +200,11 @@ class Controller(udi_interface.Node):
             {'driver': 'BARPRES', 'value': 0, 'uom': 117}, # pressure
             {'driver': 'WINDDIR', 'value': 0, 'uom': 76},  # direction
             {'driver': 'SPEED', 'value': 0, 'uom': 32},    # wind speed
-            {'driver': 'GV5', 'value': 0, 'uom': 32},      # gust speed
+            {'driver': 'GUST', 'value': 0, 'uom': 32},     # gust speed
             {'driver': 'GV2', 'value': 0, 'uom': 4},       # feels like
-            {'driver': 'GV3', 'value': 0, 'uom': 4},       # heat index
-            {'driver': 'GV4', 'value': 0, 'uom': 4},       # wind chill
-            {'driver': 'GV6', 'value': 0, 'uom': 82},      # rain
+            {'driver': 'HEATIX', 'value': 0, 'uom': 4},    # heat index
+            {'driver': 'WINDCH', 'value': 0, 'uom': 4},    # wind chill
+            {'driver': 'PRECIP', 'value': 0, 'uom': 82},   # rain
             {'driver': 'GV15', 'value': 0, 'uom': 82},     # snow depth
             {'driver': 'GV11', 'value': 0, 'uom': 25},     # climate coverage
             {'driver': 'GV12', 'value': 0, 'uom': 25},     # climate intensity
@@ -213,7 +213,6 @@ class Controller(udi_interface.Node):
             {'driver': 'DISTANC', 'value': 0, 'uom': 83},  # visibility
             {'driver': 'SOLRAD', 'value': 0, 'uom': 74},   # solar radiataion
             {'driver': 'UV', 'value': 0, 'uom': 71},       # uv index
-            {'driver': 'GVP', 'value': 30, 'uom': 25},     # log level
             ]
 
 

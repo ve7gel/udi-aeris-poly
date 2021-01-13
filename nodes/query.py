@@ -37,37 +37,38 @@ class WeatherData:
         self.__dict__['SPEED']   = {'uom': 32,  'tag': 'windSpeedKPH',    'ftag': 'windSpeedKPH', 'parse': None}    # wind speed
         self.__dict__['DISTANC'] = {'uom': 83,  'tag': 'visibilityKM',    'ftag': 'visibilityKM', 'parse': None}  # visibility
         self.__dict__['UV']      = {'uom': 71,  'tag': 'uvi',             'ftag': 'uvi', 'parse': None}       # UV index
+        self.__dict__['AQI']     = {'uom': 56,  'tag': '',                'ftag': '', 'parse': None}     # Air Quality
+        self.__dict__['ETO']     = {'uom': 106, 'tag': '',                'ftag': '', 'parse': None}    # ETo
+        self.__dict__['GUST']    = {'uom': 32,  'tag': 'windGustKPH',     'ftag': 'windGustKPH', 'parse': None}      # wind gusts
+        self.__dict__['HEADIX']  = {'uom': 4,   'tag': 'heatindexC',      'ftag': 'heatindexC', 'parse': None}       # heat index  
+        self.__dict__['MOON']    = {'uom': 56,  'tag': '',                'ftag': '', 'parse': None}      # moon phase
+        self.__dict__['OZONE']   = {'uom': 56,  'tag': '',                'ftag': '', 'parse': None}     # ozone
+        self.__dict__['POP']     = {'uom': 22,  'tag': 'pop',             'ftag': 'pop', 'parse': None}     # chance of precipitation
+        self.__dict__['PRECIP']  = {'uom': 82,  'tag': 'totalMM',         'ftag': 'precipMM', 'parse': None}      # rain
+        self.__dict__['WINDCH']  = {'uom': 4,   'tag': 'windchillC',      'ftag': 'windchillC', 'parse': None}       # wind chill
+        self.__dict__['LUMIN']   = {'uom': 36,  'tag': '',                'ftag': '', 'parse': None}       # luminance
         self.__dict__['GV0']     = {'uom': 4,   'tag': 'maxTempC',        'ftag': 'maxTempC', 'parse': None}       # max temp
         self.__dict__['GV1']     = {'uom': 4,   'tag': 'minTempC',        'ftag': 'minTempC', 'parse': None}       # min temp
         self.__dict__['GV2']     = {'uom': 4,   'tag': 'feelslikeC',      'ftag': 'feelslikeC', 'parse': None}       # ??feels like
-        self.__dict__['GV3']     = {'uom': 4,   'tag': 'heatindexC',      'ftag': 'heatindexC', 'parse': None}       # heat index  
-        self.__dict__['GV4']     = {'uom': 4,   'tag': 'windchillC',      'ftag': 'windchillC', 'parse': None}       # wind chill
-        self.__dict__['GV5']     = {'uom': 32,  'tag': 'windGustKPH',     'ftag': 'windGustKPH', 'parse': None}      # wind gusts
-        self.__dict__['GV6']     = {'uom': 82,  'tag': 'totalMM',         'ftag': 'precipMM', 'parse': None}      # rain
         self.__dict__['GV7']     = {'uom': 32,  'tag': 'windSpeedMaxKPH', 'ftag':'windSpeedMaxKPH', 'parse': None}      # wind max
         self.__dict__['GV8']     = {'uom': 32,  'tag': 'windSpeedMinKPH', 'ftag':'windSpeedMinKPH', 'parse': None}      # wind min  
-        self.__dict__['GV9']     = {'uom': 56,  'tag': '',                'ftag': '', 'parse': None}      # moon phase
-        self.__dict__['GV10']    = {'uom': 56,  'tag': '',                'ftag': '', 'parse': None}     # ozone
         self.__dict__['GV11']    = {'uom': 25,  'tag': 'weatherCoded',    'ftag': 'weatherPrimaryCoded', 'parse': None} # climate coverage
         self.__dict__['GV12']    = {'uom': 25,  'tag': 'weatherCoded',    'ftag': 'weatherPrimaryCoded', 'parse': None} # climate intensity
         self.__dict__['GV13']    = {'uom': 25,  'tag': 'weatherCoded',    'ftag': 'weatherPrimaryCoded', 'parse': None} # climate conditions
         self.__dict__['GV14']    = {'uom': 22,  'tag': 'sky',             'ftag': 'sky', 'parse': None}     # cloud conditions
         self.__dict__['GV15']    = {'uom': 82,  'tag': 'snowDepthCM',     'ftag': 'snowCM', 'parse': None}     # snow depth
-        self.__dict__['GV17']    = {'uom': 56,  'tag': '',                'ftag': '', 'parse': None}     # Air Quality
-        self.__dict__['GV18']    = {'uom': 22,  'tag': 'pop',             'ftag': 'pop', 'parse': None}     # chance of precipitation
         self.__dict__['GV19']    = {'uom': 25,  'tag': '',                'ftag': '', 'parse': None}     # day of week
-        self.__dict__['GV20']    = {'uom': 106, 'tag': '',                'ftag': '', 'parse': None}    # ETo
 
         if units == 'uk':
             self.__dict__['isMetric'] = False
             self.__dict__['SPEED']   = {'uom': 48,  'tag': 'windSpeedMPH',    'ftag': 'windSpeedMPH', 'parse': None}    # wind speed
             self.__dict__['DISTANC'] = {'uom': 116, 'tag': 'visibilityMI',    'ftag': 'visibilityMI', 'parse': None} # visibility
-            self.__dict__['GV5']     = {'uom': 48,  'tag': 'windGustMPH',     'ftag':'windGustMPH', 'parse': None}      # wind gusts
-            self.__dict__['GV6']     = {'uom': 105, 'tag': 'totalIN',         'ftag': 'precipIN', 'parse': None}     # rain
+            self.__dict__['ETO']     = {'uom': 120, 'tag': '',                'ftag': '', 'parse': None}    # ETo
+            self.__dict__['GUST']    = {'uom': 48,  'tag': 'windGustMPH',     'ftag':'windGustMPH', 'parse': None}      # wind gusts
+            self.__dict__['PRECIP']  = {'uom': 105, 'tag': 'totalIN',         'ftag': 'precipIN', 'parse': None}     # rain
             self.__dict__['GV7']     = {'uom': 48,  'tag': 'windSpeedMaxMPH', 'ftag': 'windSpeedMaxMPH', 'parse': None}      # max wind
             self.__dict__['GV8']     = {'uom': 48,  'tag': 'windSpeedMinMPH', 'ftag': 'windSpeedMinMPH', 'parse': None}      # min wind  
             self.__dict__['GV15']    = {'uom': 105, 'tag': 'snowDepthIN',     'ftag': 'snowIN', 'parse': None}    # snow depth
-            self.__dict__['GV20']    = {'uom': 120, 'tag': '',                'ftag': '', 'parse': None}    # ETo
 
         if units == 'imperial' or units == 'us':
             self.__dict__['isMetric'] = False
@@ -76,17 +77,17 @@ class WeatherData:
             self.__dict__['DEWPT']   = {'uom': 17,  'tag': 'dewpointF',       'ftag': 'dewpointF',       'parse': None} # dew point
             self.__dict__['SPEED']   = {'uom': 48,  'tag': 'windSpeedMPH',    'ftag': 'windSpeedMPH',    'parse': None} # wind speed
             self.__dict__['DISTANC'] = {'uom': 116, 'tag': 'visibilityMI',    'ftag': 'visibilityMI',    'parse': None} # visibility
+            self.__dict__['ETO']     = {'uom': 120, 'tag': '',                'ftag': '',                'parse': None} # ETo
+            self.__dict__['GUST']    = {'uom': 48,  'tag': 'windGustMPH',     'ftag': 'windGustMPH',     'parse': None} # wind gusts
+            self.__dict__['HEATIX']  = {'uom': 17,  'tag': 'heatindexF',      'ftag': 'heatindexF',      'parse': None} # ??feels like
+            self.__dict__['PRECIP']  = {'uom': 105, 'tag': 'totalIN',         'ftag': 'precipIN',        'parse': None} # rain
+            self.__dict__['WINDCH']  = {'uom': 17,  'tag': 'windchillF',      'ftag': 'windchillF',      'parse': None} # wind chill
             self.__dict__['GV0']     = {'uom': 17,  'tag': 'maxTempF',        'ftag': 'maxTempF',        'parse': None} # max temp
             self.__dict__['GV1']     = {'uom': 17,  'tag': 'minTempF',        'ftag': 'minTempF',        'parse': None} # min temp
             self.__dict__['GV2']     = {'uom': 17,  'tag': 'feelslikeF',      'ftag': 'feelslikeF',      'parse': None} # feels like
-            self.__dict__['GV3']     = {'uom': 17,  'tag': 'feelslikeF',      'ftag': 'feelslikeF',      'parse': None} # ??feels like
-            self.__dict__['GV4']     = {'uom': 17,  'tag': 'windchillF',      'ftag': 'windchillF',      'parse': None} # wind chill
-            self.__dict__['GV5']     = {'uom': 48,  'tag': 'windGustMPH',     'ftag': 'windGustMPH',     'parse': None} # wind gusts
-            self.__dict__['GV6']     = {'uom': 105, 'tag': 'totalIN',         'ftag': 'precipIN',        'parse': None} # rain
             self.__dict__['GV7']     = {'uom': 48,  'tag': 'windSpeedMaxMPH', 'ftag': 'windSpeedMaxMPH', 'parse': None} # max wind
             self.__dict__['GV8']     = {'uom': 48,  'tag': 'windSpeedMinMPH', 'ftag': 'windSpeedMinMPH', 'parse': None} # min wind   
             self.__dict__['GV15']    = {'uom': 105, 'tag': 'snowDepthIN',     'ftag': 'snowIN',          'parse': None} # snow depth
-            self.__dict__['GV20']    = {'uom': 120, 'tag': '',                'ftag': '',                'parse': None} # ETo
 
         self.__dict__['GV11']['parse'] = 'self._parse_coverage_codes'
         self.__dict__['GV12']['parse'] = 'self._parse_intensity_codes'
@@ -389,7 +390,7 @@ class queries(object):
                     epoch = int(forecast['timestamp'])
                     n = self.poly.getNode(address)
                     for drv in n.drivers:
-                        if drv['driver'] == 'GV20':  # etO, calculated value
+                        if drv['driver'] == 'ETO':  # etO, calculated value
                             continue
 
                         if drv['driver'] == 'GV19':  # day of week
