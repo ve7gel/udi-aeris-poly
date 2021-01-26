@@ -1,9 +1,9 @@
 
 # AERIS weather service
 
-This is a node server to pull weather data from the AERIS weather network and make it available to a [Universal Devices ISY994i](https://www.universal-devices.com/residential/ISY) [Polyglot interface](http://www.universal-devices.com/developers/polyglot/docs/) with  [Polyglot V2](https://github.com/Einstein42/udi-polyglotv2)
+This is a node server to pull weather data from the AERIS weather network and make it available to a [Universal Devices ISY994i](https://www.universal-devices.com/residential/ISY) [Polyglot interface](http://www.universal-devices.com/developers/polyglot/docs/) with  [Polyglot V3](https://github.com/UniversalDevicesInc/pg3)
 
-(c) 2020 Robert Paauwe
+(c) 2020,2021 Robert Paauwe
 MIT license.
 
 
@@ -59,51 +59,47 @@ The settings for this node are:
  * sys.node.[address].DISTANC (current visibility)
  * sys.node.[address].SOLRAD  (current solar radiation)
  * sys.node.[address].UV      (current uv index)
- * sys.node.[address].GV5     (current gust speed)
+ * sys.node.[address].GUST    (current gust speed)
+ * sys.node.[address].PRECIP  (current precipitation accumulation)
+ * sys.node.[address].HEATIX  (current heat index temperature)
+ * sys.node.[address].WINDCH  (current wind chill temperature)
+ * sys.node.[address].GV2     (current feels like temperature)
  * sys.node.[address].GV11    (current condition coverage)
  * sys.node.[address].GV12    (current intensity of conditions)
  * sys.node.[address].GV13    (current weather conditions)
  * sys.node.[address].GV14    (current percent cloud coverage)
- * sys.node.[address].GV6     (current precipitation accumulation)
- * sys.node.[address].GV2     (current feels like temperature)
- * sys.node.[address].GV3     (current heat index temperature)
- * sys.node.[address].GV4     (current wind chill temperature)
+ * sys.node.[address].GV15    (current snow depth)
 
 ### Forecast node
  * sys.node.[address].CLIHUM  (forecasted humidity)
  * sys.node.[address].BARPRES (forecasted barometric pressure)
  * sys.node.[address].UV      (forecasted max UV index)
+ * sys.node.[address].SPEED   (forecasted wind speed)
+ * sys.node.[address].GUST    (forecasted gust speed)
+ * sys.node.[address].PRECIP  (forecasted precipitation)
+ * sys.node.[address].POP     (forecasted precent chance of precipitation)
+ * sys.node.[address].ETO     (calculated ETo for the day)
  * sys.node.[address].GV19    (day of week forecast is for)
  * sys.node.[address].GV0     (forecasted high temperature)
  * sys.node.[address].GV1     (forecasted low temperature)
+ * sys.node.[address].GV7     (forecasted max wind speed)
+ * sys.node.[address].GV8     (forecasted min wind speed)
  * sys.node.[address].GV11    (forecasted condition coverage)
  * sys.node.[address].GV12    (forecasted intensity of conditions)
  * sys.node.[address].GV13    (forecasted weather conditions)
  * sys.node.[address].GV14    (forecasted percent cloud coverage)
- * sys.node.[address].SPEED   (forecasted wind speed)
- * sys.node.[address].GV5     (forecasted gust speed)
- * sys.node.[address].GV6     (forecasted precipitation)
  * sys.node.[address].GV15    (forecasted snowfall)
- * sys.node.[address].GV7     (forecasted max wind speed)
- * sys.node.[address].GV8     (forecasted min wind speed)
- * sys.node.[address].GV18    (forecasted precent chance of precipitation)
- * sys.node.[address].GV20    (calculated ETo for the day)
 
 ## Requirements
-1. Polyglot V2.
-2. ISY firmware 5.0.x or later
+1. Polyglot V3.
+2. ISY firmware 5.3.x or later
 3. An account with AERIS weather (http://aerisweather.com)
 
-# Upgrading
 
-Open the Polyglot web page, go to nodeserver store and click "Update" for "AERIS Weather".
-
-Then restart the AERIS nodeserver by selecting it in the Polyglot dashboard and select Control -> Restart, then watch the log to make sure everything goes well.
-
-The nodeserver keeps track of the version number and when a profile rebuild is necessary.  The profile/version.txt will contain the profile_version which is updated in server.json when the profile should be rebuilt.
-
-# Release Notes
-
+- 2.0.0 01/26/2021
+   - Re-write to work with Polyglot version 3
+   - Make use of new status values related to weather and minimize use of
+     general purpose variables.
 - 1.0.13 12/12/2020
    - Update forecast limit to match Aeris change.
 - 1.0.12 10/02/2020
