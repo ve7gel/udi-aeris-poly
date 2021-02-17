@@ -96,6 +96,8 @@ The settings for this node are:
 3. An account with AERIS weather (http://aerisweather.com)
 
 
+- 2.0.1 02/17/2021
+   - Change notification fuctions to use subscribe (interface change)
 - 2.0.0 01/26/2021
    - Re-write to work with Polyglot version 3
    - Make use of new status values related to weather and minimize use of
