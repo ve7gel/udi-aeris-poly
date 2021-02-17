@@ -47,12 +47,13 @@ class Controller(udi_interface.Node):
 
         self.q = query.queries(self.poly)
 
-        self.poly.onConfig(self.configHandler)
-        self.poly.onCustomParams(self.parameterHandler)
-        self.poly.onStart(self.address, self.start)
-        self.poly.onPoll(self.poll)
-        self.poly.onAddNodeDone(self.nodeHandler)
+        self.poly.subscribe(self.poly.CONFIG, self.configHandler)
+        self.poly.subscribe(self.poly.CUSTOMPARAMS, self.parameterHandler)
+        self.poly.subscribe(self.poly.START, self.start)
+        self.poly.subscribe(self.poly.POLL, self.poll)
+        self.poly.subscribe(self.poly.ADDNODEDONE, self.nodeHandler)
 
+        self.poly.ready()
         self.poly.addNode(self)
 
     # Process changes to customParameters
