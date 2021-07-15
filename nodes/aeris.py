@@ -105,10 +105,10 @@ class Controller(udi_interface.Node):
                 self.Notices['id'] = 'AERIS client ID must be configured.'
             if not validSec:
                 LOGGER.warning('Client secret must be set')
-                self.Notices['id'] = 'AERIS client secret key must be configured.'
+                self.Notices['secret'] = 'AERIS client secret key must be configured.'
             if not validLoc:
                 LOGGER.warning('Location must be set')
-                self.Notices['id'] = 'AERIS location must be configured.'
+                self.Notices['loc'] = 'AERIS location must be configured.'
 
     def configHandler(self, config):
         # at this time the interface should have all the nodes
