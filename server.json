@@ -29,9 +29,9 @@
 		]
     },
     "customParams": {
-	    "ClientID": "set me",
-	    "ClientSecret": "set me",
-	    "Location": "set me",
+	    "ClientID": "",
+	    "ClientSecret": "",
+	    "Location": "",
 	    "Units": "imperial",
 	    "Forecast Days": 0,
 	    "Elevation": 0,

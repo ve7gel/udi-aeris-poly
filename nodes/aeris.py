@@ -13,7 +13,7 @@ import socket
 import math
 import re
 import json
-import node_funcs
+#import node_funcs
 from nodes import aeris_daily
 from nodes import query
 
@@ -30,20 +30,10 @@ class Controller(udi_interface.Node):
         self.address = address
         self.primary = primary
         self.configured = False
-        self.force = True
         self.node_added_count = 0
+
         self.Notices = Custom(polyglot, 'notices')
         self.Parameters = Custom(polyglot, 'customparams')
-
-        self.params = node_funcs.NSParameters([
-            { 'name': 'ClientID', 'default': 'set me', 'isRequired': True, 'notice': 'AERIS Client ID must be set', },
-            { 'name': 'ClientSecret', 'default': 'set me', 'isRequired': True, 'notice': 'AERIS Client Secret must be set', },
-            { 'name': 'Location', 'default': 'set me', 'isRequired': True, 'notice': 'AERIS location must be set', },
-            { 'name': 'Units', 'default': 'imperial', 'isRequired': False, 'notice': '', },
-            { 'name': 'Forecast Days', 'default': '0', 'isRequired': False, 'notice': '', },
-            { 'name': 'Elevation', 'default': '0', 'isRequired': False, 'notice': '', },
-            { 'name': 'Plant Type', 'default': '0.23', 'isRequired': False, 'notice': '', },
-            ])
 
         self.q = query.queries(self.poly)
 
@@ -58,24 +48,67 @@ class Controller(udi_interface.Node):
 
     # Process changes to customParameters
     def parameterHandler(self, params):
+        validCli = False
+        validSec = False
+        validLoc = False
         self.Parameters.load(params)
-        self.params.update(self.Parameters)
+        #self.params.update(self.Parameters)
 
-        self.q.units = self.params.get('Units')
-        self.q.location = self.params.get('Location')
-        self.q.client_id = self.params.get('ClientID')
-        self.q.client_secret = self.params.get('ClientSecret')
-        self.q.plant_type = self.params.get('Plant Type')
-        self.q.days = self.params.get('Forecast Days')
-        self.q.elevation = self.params.get('Elevation')
+        if self.Parameters['ClientID'] is not None:
+            if len(self.Parameters['ClientID']) == 21:
+                validCli = True
+            else:
+                LOGGER.debug('Client ID {} invalid.'.format(self.Parameters['ClientID']))
+        else:
+            LOGGER.error('Client ID is missing.')
 
-        if self.params.isConfigured():
-            self.Notices.clear()
+        if self.Parameters['ClientSecret'] is not None:
+            if len(self.Parameters['ClientSecret']) == 40:
+                validSec = True
+            else:
+                LOGGER.debug('Client Secret {} invalid.'.format(self.Parameters['ClientSecret']))
+        else:
+            LOGGER.error('Client Secret is missing.')
+
+        if self.Parameters['Location'] is not None:
+            if 'PWS' in self.Parameters['Location']:
+                validLoc = True
+            elif len(self.Parameters['Location']) > 2:
+                validLoc = True
+            else:
+                LOGGER.debug('Location {} invalid.'.format(self.Parameters['Location']))
+        else:
+            LOGGER.error('Client Secret is missing.')
+
+
+        self.Notices.clear()
+
+        if validCli and validSec and validLoc:
+            self.q.units = self.Parameters['Units']
+            self.q.location = self.Parameters['Location']
+            self.q.client_id = self.Parameters['ClientID']
+            self.q.client_secret = self.Parameters['ClientSecret']
+            self.q.plant_type = self.Parameters['Plant Type']
+            self.q.days = self.Parameters['Forecast Days']
+            self.q.elevation = self.Parameters['Elevation']
+            self.q.configured = True
             self.configured = True
+
             # check if number of forecast days has changed
-            if self.params.isSet('Forecast Days') and self.Parameters.isChanged('Forecast Days'):
-                LOGGER.critical('CALLING DISCOVERY from parameter Handler')
+            if self.Parameters.isChanged('Forecast Days'):
+                LOGGER.info('CALLING DISCOVERY from parameter Handler')
                 self.discover()
+                self.q.query_forecasts(self.Parameters['Units'], True)
+        else:
+            if not validCli:
+                LOGGER.warning('Client ID must be set')
+                self.Notices['id'] = 'AERIS client ID must be configured.'
+            if not validSec:
+                LOGGER.warning('Client secret must be set')
+                self.Notices['id'] = 'AERIS client secret key must be configured.'
+            if not validLoc:
+                LOGGER.warning('Location must be set')
+                self.Notices['id'] = 'AERIS location must be configured.'
 
     def configHandler(self, config):
         # at this time the interface should have all the nodes
@@ -89,53 +122,46 @@ class Controller(udi_interface.Node):
     def nodeHandler(self, data):
         self.node_added_count += 1
 
-        # testing...
-        LOGGER.debug('Handling node add done for {}'.format(data.get('address')))
-        LOGGER.debug('******************  node private = {}'.format(data.get('private')))
-
-
     def start(self):
         LOGGER.info('Starting node server')
-        self.check_params()
         self.poly.updateProfile()
         self.poly.setCustomParamsDoc()
+
+        while not self.configured:
+            time.sleep(10)
 
         LOGGER.critical('CALLING DISCOVERY from start')
         self.discover()
 
         # Do an initial query to get filled in as soon as possible
-        if self.configured:
-            self.q.configured = True
-            self.q.query_conditions(self.address, self.params.get('Units'), self.force)
-            self.q.query_forecasts(self.params.get('Units'), self.force)
-            self.force = False
+        self.q.query_conditions(self.address, self.Parameters['Units'], True)
+        self.q.query_forecasts(self.Parameters['Units'], True)
 
         LOGGER.info('Node server started')
 
-    def poll(self, longpoll):
-        if longpoll:
-            self.q.query_forecasts(self.params.get('Units'), self.force)
+    def poll(self, pollType):
+        if 'shortPoll' in pollType:
+            self.q.query_conditions(self.address, self.Parameters['Units'], False)
         else:
-            self.q.query_conditions(self.address, self.params.get('Units'), self.force)
+            self.q.query_conditions(self.address, self.Parameters['Units'], False)
 
     def query(self):
-        nodes = self.poly.getNodes()
-        for node in nodes:
-            nodes[node].reportDrivers()
+        self.q.query_conditions(self.address, self.Parameters['Units'], True)
+        self.q.query_forecasts(self.Parameters['Units'], True)
 
     def discover(self, *args, **kwargs):
         # Create any additional nodes here
         LOGGER.info("In Discovery...")
 
-        node_count = 0
-        num_days = int(self.params.get('Forecast Days'))
+        node_count = 1
+        num_days = int(self.Parameters['Forecast Days'])
         if num_days < 7:
             # delete any extra days
             for day in range(num_days, 7):
                 address = 'forecast_' + str(day)
                 try:
                     if self.poly.getNode(address):
-                        self.delNode(address)
+                        self.poly.delNode(address)
                 except:
                     LOGGER.debug('Failed to delete node ' + address)
 
@@ -143,22 +169,27 @@ class Controller(udi_interface.Node):
             address = 'forecast_' + str(day)
             title = 'Forecast ' + str(day)
             try:
-                LOGGER.info('Creating forecast node {} {}'.format(address,title))
-                node = aeris_daily.DailyNode(self.poly, self.address, address, title, self.params.get('Units'))
-                node.private = 'private data for ' + address
-                node.plant_type = self.params.get('Plant Type')
-                node.elevation = self.params.get('Elevation')
+                if self.poly.getNode(address) is None:
+                    LOGGER.info('Creating forecast node {} {}'.format(address,title))
+                    node = aeris_daily.DailyNode(self.poly, self.address, address, title, self.Parameters['Units'])
+                    node.private = 'private data for ' + address
+                    node.plant_type = self.Parameters['Plant Type']
+                    node.elevation = self.Parameters['Elevation']
 
-                LOGGER.debug('Adding forecast node {}'.format(title))
-                node_count += 1
-                self.poly.addNode(node)
+                    LOGGER.debug('Adding forecast node {}'.format(title))
+                    node_count += 1
+                    self.poly.addNode(node)
+
+                    # Wait for node to be created
+                    while self.node_added_count < node_count:
+                        time.sleep(2)
+                else:
+                    node_count += 1
+                    LOGGER.info('Node {} already exists, skipping'.format(address))
+
             except Exception as e:
-                LOGGER.error('Failed to create forecast node ' + title)
+                LOGGER.error('Failed to create forecast node {}: {}'.format(address, e))
                 LOGGER.error('  -> {}'.format(e))
-
-        # wait for all nodes to be added before continuing
-        while self.node_added_count < (1 + node_count):
-            time.sleep(2)
 
 
     # Delete the node server from Polyglot
@@ -167,21 +198,6 @@ class Controller(udi_interface.Node):
 
     def stop(self):
         LOGGER.info('Stopping node server')
-
-    def check_params(self):
-        self.Notices.clear()
-
-        if self.params.isConfigured():
-            LOGGER.debug('All required parameters are set!')
-            self.configured = True
-            if int(self.params.get('Forecast Days')) > 6:
-                # TODO: Set a notice: 'Number of days of forecast data is limited to 6 days'
-                self.params.set('Forecast Days', 6)
-        else:
-            LOGGER.info('User configuration required.')
-            self.Notices.load(self.params.activeNotices(), True)
-
-        self.params.save(self.Parameters)
 
     def remove_notices_all(self, command):
         self.Notices.clear()
