@@ -96,6 +96,8 @@ The settings for this node are:
 3. An account with AERIS weather (http://aerisweather.com)
 
 
+- 2.0.3 07/15/2021
+   - Fix parameter handling so that it works with latest udi_interface.
 - 2.0.1 02/17/2021
    - Change notification fuctions to use subscribe (interface change)
 - 2.0.0 01/26/2021
