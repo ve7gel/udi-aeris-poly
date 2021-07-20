@@ -360,6 +360,10 @@ class queries(object):
                     if v == None or v == "None":
                         v = "0"
                     n.setDriver('PRECIP', round(float(v), prec), True, force, wmap.uom('PRECIP'))
+                else:
+                    n.setDriver('PRECIP', 0, True, force, wmap.uom('PRECIP'))
+            else:
+                n.setDriver('PRECIP', 0, True, force, wmap.uom('PRECIP'))
                 
         except Exception as e:
             LOGGER.error('Precipitation summary update failure: {}'.format(e))
