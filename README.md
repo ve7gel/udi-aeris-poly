@@ -96,6 +96,8 @@ The settings for this node are:
 3. An account with AERIS weather (http://aerisweather.com)
 
 
+- 2.0.4 07/20/2021
+   - Fix units for precipitation
 - 2.0.3 07/15/2021
    - Fix parameter handling so that it works with latest udi_interface.
 - 2.0.1 02/17/2021
