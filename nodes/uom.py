@@ -45,6 +45,7 @@ class uom:
         self.__dict__['GV18'] = 22     # chance of precipitation
         self.__dict__['GV19'] = 25     # day of week
         self.__dict__['GV20'] = 106    # ETo
+        self.__dict__['PRECIP'] = 83   # precipitation
 
         if units == 'uk':
             self.__dict__['SPEED'] = 48    # wind speed
@@ -54,6 +55,7 @@ class uom:
             self.__dict__['GV8'] = 48      # min wind  
             self.__dict__['GV15'] = 105    # snow depth
             self.__dict__['DISTANC'] = 116 # visibility
+            self.__dict__['PRECIP'] = 83   # precipitation
             self.__dict__['GV20'] = 120    # ETo
 
         if units == 'imperial' or units == 'us':
@@ -72,6 +74,7 @@ class uom:
             self.__dict__['GV8'] = 48      # min wind   
             self.__dict__['GV15'] = 105    # snow depth
             self.__dict__['DISTANC'] = 116 # visibility
+            self.__dict__['PRECIP'] = 105  # precipitation
             self.__dict__['GV20'] = 120    # ETo
 
     def __setattr__(self, name, value):
