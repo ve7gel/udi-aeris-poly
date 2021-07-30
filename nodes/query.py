@@ -320,6 +320,8 @@ class queries(object):
             for drv in n.drivers:
                 if drv['driver'] == 'PRECIP':
                     continue # this comes from a different query
+                if drv['driver'] == 'ST':
+                    continue # Skip this
 
                 try:
                     v = wmap.parse(drv['driver'], ob)
