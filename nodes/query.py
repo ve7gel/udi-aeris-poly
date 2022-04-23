@@ -40,7 +40,7 @@ class WeatherData:
         self.__dict__['AQI']     = {'uom': 56,  'tag': '',                'ftag': '', 'parse': None}     # Air Quality
         self.__dict__['ETO']     = {'uom': 106, 'tag': '',                'ftag': '', 'parse': None}    # ETo
         self.__dict__['GUST']    = {'uom': 32,  'tag': 'windGustKPH',     'ftag': 'windGustKPH', 'parse': None}      # wind gusts
-        self.__dict__['HEADIX']  = {'uom': 4,   'tag': 'heatindexC',      'ftag': 'heatindexC', 'parse': None}       # heat index  
+        self.__dict__['HEATIX']  = {'uom': 4,   'tag': 'heatindexC',      'ftag': 'heatindexC', 'parse': None}       # heat index
         self.__dict__['MOON']    = {'uom': 56,  'tag': '',                'ftag': '', 'parse': None}      # moon phase
         self.__dict__['OZONE']   = {'uom': 56,  'tag': '',                'ftag': '', 'parse': None}     # ozone
         self.__dict__['POP']     = {'uom': 22,  'tag': 'pop',             'ftag': 'pop', 'parse': None}     # chance of precipitation
