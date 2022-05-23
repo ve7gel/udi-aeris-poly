@@ -143,7 +143,7 @@ class Controller(udi_interface.Node):
         if 'shortPoll' in pollType:
             self.q.query_conditions(self.address, self.Parameters['Units'], False)
         else:
-            self.q.query_conditions(self.address, self.Parameters['Units'], False)
+            self.q.query_forecasts(self.address, self.Parameters['Units'], False)
 
     def query(self):
         self.q.query_conditions(self.address, self.Parameters['Units'], True)
