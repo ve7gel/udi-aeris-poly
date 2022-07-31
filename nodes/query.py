@@ -363,7 +363,11 @@ class queries(object):
                         v = "0"
                     n.setDriver('PRECIP', round(float(v), prec), True, force, wmap.uom('PRECIP'))
                 else:
-                    n.setDriver('PRECIP', 0, True, force, wmap.uom('PRECIP'))
+                    LOGGER.debug('Setting precipitation to: ' + str(rd['precip']]))
+                    v = wmap.parse('PRECIP', rd['precip'])
+                    if v == None or v == "None":
+                        v = "0"
+                    n.setDriver('PRECIP', round(float(v)), True, force, wmap.uom('PRECIP'))
             else:
                 n.setDriver('PRECIP', 0, True, force, wmap.uom('PRECIP'))
                 
