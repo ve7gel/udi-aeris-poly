@@ -349,7 +349,9 @@ class queries(object):
             if 'response' not in jdata:
                 LOGGER.error('No response object in query response.')
                 return
+
             #LOGGER.debug(jdata)
+
             if type(jdata['response']) is list:
                 rd = jdata['response'][0]['periods'][0]['summary']
             else:
@@ -357,17 +359,17 @@ class queries(object):
 
             if 'precip' in rd:
                 if 'precip_summary' in rd['precip']:
-                    LOGGER.debug('Setting precipitation to: ' + str(rd['precip'][self.tag['precip_summary']]))
+                    LOGGER.debug('precipitation info: ' + str(rd['precip'][self.tag['precip_summary']]))
                     v = wmap.parse('PRECIP', rd['precip']['precip_summary'])
                     if v == None or v == "None":
                         v = "0"
-                    n.setDriver('PRECIP', round(float(v), prec), True, force, wmap.uom('PRECIP'))
+                    n.setDriver('PRECIP', round(float(v), 2), True, force, wmap.uom('PRECIP'))
                 else:
                     LOGGER.debug('Setting precipitation to: ' + str(rd['precip']))
                     v = wmap.parse('PRECIP', rd['precip'])
                     if v == None or v == "None":
                         v = "0"
-                    n.setDriver('PRECIP', round(float(v)), True, force, wmap.uom('PRECIP'))
+                    n.setDriver('PRECIP', round(float(v), 2), True, force, wmap.uom('PRECIP'))
             else:
                 n.setDriver('PRECIP', 0, True, force, wmap.uom('PRECIP'))
                 
