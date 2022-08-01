@@ -363,7 +363,7 @@ class queries(object):
                         v = "0"
                     n.setDriver('PRECIP', round(float(v), prec), True, force, wmap.uom('PRECIP'))
                 else:
-                    LOGGER.debug('Setting precipitation to: ' + str(rd['precip']]))
+                    LOGGER.debug('Setting precipitation to: ' + str(rd['precip']))
                     v = wmap.parse('PRECIP', rd['precip'])
                     if v == None or v == "None":
                         v = "0"
