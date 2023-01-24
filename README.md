@@ -96,6 +96,8 @@ The settings for this node are:
 3. An account with AERIS weather (http://aerisweather.com)
 
 
+- 2.0.6 04/23/2022
+   - fix typo HEADIX should be HEATIX
 - 2.0.5 07/20/2021
    - Stop generating a warning for ST
 - 2.0.4 07/20/2021
